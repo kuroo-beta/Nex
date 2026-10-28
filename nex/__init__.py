@@ -1,0 +1,1 @@
+"""Nex CodeX Discord bot."""
