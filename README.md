@@ -279,6 +279,45 @@ have **no automatic retention expiry**. Restrict database access, choose a local
 policy and prune/back up audit records during operator-controlled maintenance. No command
 exports audit or live user data.
 
+### Wispbyte / panel hosting startup
+
+For panels using `/usr/local/bin/python /home/container/${PY_FILE}` and
+`pip install --prefix .local`, the launcher `start.py` provides an alternative:
+it creates a private `.venv`, installs the pinned `requirements.txt` there, and
+replaces itself with the bot process. Failed installation stops startup. It uses
+no bot token during installation and does not clone or overwrite uploaded files.
+
+Configure the host before restarting:
+
+1. Select a **Python 3.12+** image/interpreter. The supplied console log used
+   **Python 3.11.17**, which does not meet this project's existing requirement.
+   Both entry points now report that mismatch before importing dependencies.
+2. If you uploaded the project files and the directory has no `.git`, set
+   **`USER_UPLOAD=1`**. This skips the startup command's duplicate attempts to
+   clone into the nonempty upload directory. If using Git deployment instead,
+   have the host initialize the checkout in a separate empty directory; preserve
+   `.env` and the database when moving files.
+3. Set **`PY_FILE=start.py`**, clear **`PY_PACKAGES`**, and set
+   **`REQUIREMENTS_FILE=panel-requirements-disabled.txt`**. Do **not** create that
+   file: the panel command shown in the log only runs its `.local` installer if
+   the configured file exists. Keep the real `requirements.txt` in the project;
+   `start.py` installs it into `.venv`. These settings bypass the failing
+   `--prefix .local` step; changing requirements alone cannot repair ownership.
+4. Ensure the server user can write the project directory (for `.venv`) and the
+   database directory (`data/` by default). If ownership is wrong, ask the host
+   to restore it to the server user. Do not use `chmod 777` or run the bot as root.
+5. Provide your private `.env`/environment configuration and start the server.
+   If the image does not include `venv`/`ensurepip`, ask the host to enable those
+   Python modules. After changing the Python image, stop the bot and move the old
+   `.venv` aside before starting again.
+
+If the host allows a custom command, use `python3.12 start.py` directly instead
+of the panel's automatic clone/install command. With an already prepared virtual
+environment you can continue running `.venv/bin/python bot.py` directly.
+The launcher repairs dependency preparation; it cannot change the panel's image,
+file ownership, or Discord configuration. A pip cache ownership warning is separate
+from the fatal `.local` permission error; the launcher disables pip's cache.
+
 ### Known Discord limits
 
 - Prefix parsing requires Message Content intent; Presence/Member intents need Portal setup.
